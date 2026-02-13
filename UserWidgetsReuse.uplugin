@@ -1,0 +1,23 @@
+﻿{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UserWidgetsReuse",
+	"Description": "",
+	"Category": "Other",
+	"CreatedBy": "CrazyDog",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "UserWidgetsReuse",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
