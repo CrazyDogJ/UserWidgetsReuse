@@ -9,7 +9,7 @@
 #include "UserWidgetsReuseSubsystem.generated.h"
 
 UCLASS()
-class USERWIDGETSREUSE_API UUserWidgetsReuseSubsystem : public ULocalPlayerSubsystem
+class USERWIDGETSREUSE_API UUserWidgetsReuseSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 protected:

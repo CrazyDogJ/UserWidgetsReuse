@@ -10,7 +10,9 @@ void UUserWidgetsReuseSubsystem::Deinitialize()
 	WidgetMap.Empty();
 	for (auto Itr : WidgetPool)
 	{
+		Itr.Value.ReleaseAll(true);
 		Itr.Value.ReleaseAllSlateResources();
+		Itr.Value.ResetPool();
 	}
 	WidgetPool.Empty();
 }
@@ -24,7 +26,7 @@ FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassO
 
 	auto* New = &WidgetPool.Add(WidgetClass);
 	New->SetWorld(GetWorld());
-	New->SetDefaultPlayerController(GetLocalPlayer()->PlayerController);
+	New->SetDefaultPlayerController(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController);
 	return New;
 }
 
@@ -37,7 +39,7 @@ UUserWidget* UUserWidgetsReuseSubsystem::GetOrCreateWidget(TSubclassOf<UUserWidg
 
 	if (bCreate)
 	{
-		const auto NewWidget = CreateWidget<UUserWidget, APlayerController*>(GetLocalPlayer()->PlayerController, InUserWidgetClass);
+		const auto NewWidget = CreateWidget<UUserWidget, APlayerController*>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController, InUserWidgetClass);
 		if (NewWidget)
 		{
 			WidgetMap.Add(InUserWidgetClass, NewWidget);
@@ -79,7 +81,9 @@ void UUserWidgetsReuseSubsystem::ReleasePool(TSubclassOf<UUserWidget> Class)
 {
 	if (const auto Found = WidgetPool.Find(Class))
 	{
+		Found->ReleaseAll(true);
 		Found->ReleaseAllSlateResources();
+		Found->ResetPool();
 		WidgetPool.Remove(Class);
 	}
 }
