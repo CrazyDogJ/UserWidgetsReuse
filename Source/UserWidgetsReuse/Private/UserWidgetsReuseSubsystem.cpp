@@ -7,14 +7,8 @@ void UUserWidgetsReuseSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 
-	WidgetMap.Empty();
-	for (auto Itr : WidgetPool)
-	{
-		Itr.Value.ReleaseAll(true);
-		Itr.Value.ReleaseAllSlateResources();
-		Itr.Value.ResetPool();
-	}
-	WidgetPool.Empty();
+	ReleaseReuseWidgets();
+	ReleaseAllPools();
 }
 
 FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass)
@@ -75,6 +69,22 @@ void UUserWidgetsReuseSubsystem::ReleaseUserWidget(UUserWidget* InUserWidget)
 			Pool->Release(InUserWidget);
 		}
 	}
+}
+
+void UUserWidgetsReuseSubsystem::ReleaseReuseWidgets()
+{
+	WidgetMap.Empty();
+}
+
+void UUserWidgetsReuseSubsystem::ReleaseAllPools()
+{
+	for (auto Itr : WidgetPool)
+	{
+		Itr.Value.ReleaseAll(true);
+		Itr.Value.ReleaseAllSlateResources();
+		Itr.Value.ResetPool();
+	}
+	WidgetPool.Empty();
 }
 
 void UUserWidgetsReuseSubsystem::ReleasePool(TSubclassOf<UUserWidget> Class)

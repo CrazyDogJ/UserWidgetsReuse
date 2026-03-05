@@ -35,6 +35,12 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	void ReleaseUserWidget(UUserWidget* InUserWidget);
+
+	UFUNCTION(BlueprintCallable)
+	void ReleaseReuseWidgets();
+	
+	UFUNCTION(BlueprintCallable)
+	void ReleaseAllPools();
 	
 	UFUNCTION(BlueprintCallable)
 	void ReleasePool(TSubclassOf<UUserWidget> Class);
