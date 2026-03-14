@@ -13,6 +13,11 @@ void UUserWidgetsReuseSubsystem::Deinitialize()
 
 FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass)
 {
+	if (!GetWorld() || !GetWorld()->GetFirstLocalPlayerFromController())
+	{
+		return nullptr;
+	}
+	
 	if (const auto Found = WidgetPool.Find(WidgetClass))
 	{
 		return Found;
@@ -52,10 +57,13 @@ UUserWidget* UUserWidgetsReuseSubsystem::RequestUserWidget(TSubclassOf<UUserWidg
 		return nullptr;
 	}
 
-	const auto Pool = GetOrAddWidgetPool(InWidgetClass);
-	const auto WidgetInstance = Pool->GetOrCreateInstance(InWidgetClass);
-
-	return WidgetInstance;
+	if (const auto Pool = GetOrAddWidgetPool(InWidgetClass))
+	{
+		const auto WidgetInstance = Pool->GetOrCreateInstance(InWidgetClass);
+		return WidgetInstance;
+	}
+	
+	return nullptr;
 }
 
 void UUserWidgetsReuseSubsystem::ReleaseUserWidget(UUserWidget* InUserWidget)
