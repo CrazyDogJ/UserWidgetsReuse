@@ -3,14 +3,6 @@
 
 #include "UserWidgetsReuseSubsystem.h"
 
-void UUserWidgetsReuseSubsystem::Deinitialize()
-{
-	Super::Deinitialize();
-
-	ReleaseReuseWidgets();
-	ReleaseAllPools();
-}
-
 FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass)
 {
 	if (!GetWorld() || !GetWorld()->GetFirstLocalPlayerFromController())
@@ -25,7 +17,11 @@ FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassO
 
 	auto* New = &WidgetPool.Add(WidgetClass);
 	New->SetWorld(GetWorld());
+#if ENGINE_MAJOR_VERSION == 4
+	
+#else
 	New->SetDefaultPlayerController(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController);
+#endif
 	return New;
 }
 
@@ -38,7 +34,14 @@ UUserWidget* UUserWidgetsReuseSubsystem::GetOrCreateWidget(TSubclassOf<UUserWidg
 
 	if (bCreate)
 	{
-		const auto NewWidget = CreateWidget<UUserWidget, APlayerController*>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController, InUserWidgetClass);
+		const auto NewWidget = CreateWidget<UUserWidget, 
+#if ENGINE_MAJOR_VERSION == 4
+		APlayerController
+#else
+		APlayerController*
+#endif
+		>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController, InUserWidgetClass);
+		
 		if (NewWidget)
 		{
 			WidgetMap.Add(InUserWidgetClass, NewWidget);
@@ -104,4 +107,12 @@ void UUserWidgetsReuseSubsystem::ReleasePool(TSubclassOf<UUserWidget> Class)
 		Found->ResetPool();
 		WidgetPool.Remove(Class);
 	}
+}
+
+void UUserWidgetsReuseSubsystem::Deinitialize()
+{
+	Super::Deinitialize();
+
+	ReleaseReuseWidgets();
+	ReleaseAllPools();
 }

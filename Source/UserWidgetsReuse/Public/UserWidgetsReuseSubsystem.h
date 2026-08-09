@@ -19,8 +19,6 @@ protected:
 	UPROPERTY()
 	TMap<TSubclassOf<UUserWidget>, FUserWidgetPool> WidgetPool;
 	
-	virtual void Deinitialize() override;
-	
 private:
 	FUserWidgetPool* GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass);
 	
@@ -44,4 +42,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	void ReleasePool(TSubclassOf<UUserWidget> Class);
+	
+	virtual void Deinitialize() override;
 };
