@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/UserWidgetPool.h"
-#include "Subsystems/LocalPlayerSubsystem.h"
+#include "Subsystems/WorldSubsystem.h"
 #include "UserWidgetsReuseSubsystem.generated.h"
 
 UCLASS()
@@ -20,6 +20,8 @@ protected:
 	TMap<TSubclassOf<UUserWidget>, FUserWidgetPool> WidgetPool;
 	
 private:
+	// 修复：退出时的 Destruct 回调不能在同一子系统中重新建池。
+	bool bReleasingWorld = false;
 	FUserWidgetPool* GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass);
 	
 public:

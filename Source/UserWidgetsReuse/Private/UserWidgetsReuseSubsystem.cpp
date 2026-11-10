@@ -5,7 +5,7 @@
 
 FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassOf<UUserWidget>& WidgetClass)
 {
-	if (!GetWorld() || !GetWorld()->GetFirstLocalPlayerFromController())
+	if (bReleasingWorld || !GetWorld() || !GetWorld()->GetFirstLocalPlayerFromController())
 	{
 		return nullptr;
 	}
@@ -27,20 +27,19 @@ FUserWidgetPool* UUserWidgetsReuseSubsystem::GetOrAddWidgetPool(const TSubclassO
 
 UUserWidget* UUserWidgetsReuseSubsystem::GetOrCreateWidget(TSubclassOf<UUserWidget> InUserWidgetClass, bool bCreate)
 {
+	if (bReleasingWorld) return nullptr;
 	if (const auto Found = WidgetMap.Find(InUserWidgetClass))
 	{
-		return *Found;
+		if (IsValid(*Found)) return *Found;
+		WidgetMap.Remove(InUserWidgetClass);
 	}
 
-	if (bCreate)
+	// 修复：专服、地图切换或本地控制器尚未建立时，不能创建界面。
+	const auto LocalPlayer = GetWorld() ? GetWorld()->GetFirstLocalPlayerFromController() : nullptr;
+	APlayerController* Controller = LocalPlayer ? LocalPlayer->PlayerController : nullptr;
+	if (bCreate && InUserWidgetClass && IsValid(Controller))
 	{
-		const auto NewWidget = CreateWidget<UUserWidget, 
-#if ENGINE_MAJOR_VERSION == 4
-		APlayerController
-#else
-		APlayerController*
-#endif
-		>(GetWorld()->GetFirstLocalPlayerFromController()->PlayerController, InUserWidgetClass);
+		const auto NewWidget = CreateWidget<UUserWidget>(Controller, InUserWidgetClass);
 		
 		if (NewWidget)
 		{
@@ -74,45 +73,59 @@ void UUserWidgetsReuseSubsystem::ReleaseUserWidget(UUserWidget* InUserWidget)
 	if (InUserWidget)
 	{
 		const auto WidgetClass = InUserWidget->GetClass();
-		if (const auto Pool = GetOrAddWidgetPool(WidgetClass))
+		// 修复：释放时只访问现有池，避免在关卡退出时建立新池。
+		const auto* Pool = WidgetPool.Find(WidgetClass);
+		if (Pool && Pool->GetActiveWidgets().Contains(InUserWidget))
 		{
 			InUserWidget->RemoveFromParent();
-			Pool->Release(InUserWidget);
+			// RemoveFromParent 可能经蓝图回调销毁原池。
+			if (auto* CurrentPool = WidgetPool.Find(WidgetClass)) CurrentPool->Release(InUserWidget);
 		}
 	}
 }
 
 void UUserWidgetsReuseSubsystem::ReleaseReuseWidgets()
 {
-	WidgetMap.Empty();
+	// 修复：视口也持有单例控件，清空缓存时同步解除父子关系。
+	auto Widgets = MoveTemp(WidgetMap);
+	for (const auto& Pair : Widgets)
+	{
+		if (IsValid(Pair.Value)) Pair.Value->RemoveFromParent();
+	}
 }
 
 void UUserWidgetsReuseSubsystem::ReleaseAllPools()
 {
-	for (auto Itr : WidgetPool)
+	// 修复：从注册表移出正在关闭的池，直接释放原池持有的 Slate 引用。
+	auto PoolsToRelease = MoveTemp(WidgetPool);
+	for (auto& Itr : PoolsToRelease)
 	{
+		const auto Active = Itr.Value.GetActiveWidgets();
+		for (auto* Widget : Active) if (IsValid(Widget)) Widget->RemoveFromParent();
 		Itr.Value.ReleaseAll(true);
 		Itr.Value.ReleaseAllSlateResources();
 		Itr.Value.ResetPool();
 	}
-	WidgetPool.Empty();
 }
 
 void UUserWidgetsReuseSubsystem::ReleasePool(TSubclassOf<UUserWidget> Class)
 {
-	if (const auto Found = WidgetPool.Find(Class))
+	// 修复：先移出注册表，控件卸载回调不能再访问正在释放的池。
+	FUserWidgetPool Removed;
+	if (WidgetPool.RemoveAndCopyValue(Class, Removed))
 	{
-		Found->ReleaseAll(true);
-		Found->ReleaseAllSlateResources();
-		Found->ResetPool();
-		WidgetPool.Remove(Class);
+		const auto Active = Removed.GetActiveWidgets();
+		for (auto* Widget : Active) if (IsValid(Widget)) Widget->RemoveFromParent();
+		Removed.ReleaseAll(true);
+		Removed.ReleaseAllSlateResources();
+		Removed.ResetPool();
 	}
 }
 
 void UUserWidgetsReuseSubsystem::Deinitialize()
 {
-	Super::Deinitialize();
-
+	bReleasingWorld = true;
 	ReleaseReuseWidgets();
 	ReleaseAllPools();
+	Super::Deinitialize();
 }
